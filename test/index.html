@@ -161,6 +161,13 @@
     .qz-sig-mini:disabled { background:rgba(45,138,39,.75); cursor:default; }
     #lbSignaler { background:#8a4a1f; }
     #lbSignaler:disabled { background:#2d5a27; cursor:default; }
+    .exc-item { display:flex; align-items:center; gap:11px; padding:9px 0; border-bottom:1px solid #eee; }
+    .exc-item img, .exc-vide { width:56px; height:42px; object-fit:cover; border-radius:6px; flex:0 0 auto; background:#e8ede6; }
+    .exc-info { flex:1; min-width:0; font-size:13.5px; }
+    .exc-info b { display:block; color:#2d5a27; }
+    .exc-info span { color:#777; font-size:12px; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .exc-restaurer { background:#eef3ec; border:1px solid #cddac8; color:#2d5a27; border-radius:7px; padding:7px 12px; font-size:13px; cursor:pointer; flex:0 0 auto; }
+    .exc-restaurer:hover { background:#dde9d8; }
     .note { max-width:900px; margin:20px auto; padding:12px; background:#fff; border-radius:10px; box-shadow:0 1px 5px rgba(0,0,0,0.08); color:#555; }
   </style>
 </head>
@@ -3197,24 +3204,37 @@ const pretPhotos = new Promise(res => setTimeout(() => chargerPhotos().then(res,
 
 
 /* ====================================================================
-   CHANTIER 3 : signalement des photos incorrectes
-   Un appui sur "Signaler" retire immediatement la photo (fiche et quiz),
-   la remplace par la suivante disponible pour le meme taxon, et
-   enregistre l'exclusion : en memoire pour la session, dans le
-   navigateur pour les sessions suivantes sur cet appareil, et
-   exportable en exclusions.json pour la partager sur l'hebergement.
+   CHANTIER 3 : signalement des photos incorrectes (v2)
+   Chaque signalement conserve un instantane (photo, credit, page) pour
+   pouvoir etre affiche et restaure individuellement depuis le panneau
+   Signalements. Persistance : memoire pour la session, navigateur pour
+   les sessions suivantes, exclusions.json pour le partage entre appareils.
    ==================================================================== */
 
-const EXCLUSIONS = {};                 /* { "3": ["inat:1014", "commons_fichier.jpg"], ... } */
+const EXCLUSIONS = {};   /* { "3": [{cle,url,credit,page}, ...], ... } */
+
+/* accepte aussi bien une simple chaine (ancien format) qu'un objet complet */
+function normaliserExclusion(x) {
+  if (typeof x === 'string') return { cle: x, url: '', credit: '', page: '' };
+  if (x && x.cle) return { cle: x.cle, url: x.url || '', credit: x.credit || '', page: x.page || '' };
+  return null;
+}
+function fusionnerExclusions(cible, source) {
+  Object.keys(source || {}).forEach(k => {
+    const arr = cible[k] || [];
+    (source[k] || []).forEach(brut => {
+      const rec = normaliserExclusion(brut);
+      if (rec && !arr.some(x => x.cle === rec.cle)) arr.push(rec);
+    });
+    cible[k] = arr;
+  });
+}
 
 function chargerExclusionsLocales() {
   try {
     const brut = localStorage.getItem('vege-exclusions');
     if (!brut) return;
-    const d = JSON.parse(brut);
-    Object.keys(d || {}).forEach(k => {
-      EXCLUSIONS[k] = (EXCLUSIONS[k] || []).concat(d[k]).filter((v, idx, a) => a.indexOf(v) === idx);
-    });
+    fusionnerExclusions(EXCLUSIONS, JSON.parse(brut));
   } catch (e) { /* stockage indisponible (navigation privee) : tant pis, non bloquant */ }
 }
 chargerExclusionsLocales();            /* lecture synchrone, disponible des le premier rendu */
@@ -3229,15 +3249,13 @@ async function chargerExclusionsPartagees() {
     if (!r.ok) return;
     const d = await r.json();
     if (!d || d.format !== 'exclusions-vegetaux' || !d.exclusions) return;
-    Object.keys(d.exclusions).forEach(k => {
-      EXCLUSIONS[k] = (EXCLUSIONS[k] || []).concat(d.exclusions[k]).filter((v, idx, a) => a.indexOf(v) === idx);
-    });
+    fusionnerExclusions(EXCLUSIONS, d.exclusions);
   } catch (e) { /* fichier absent : rien a fusionner */ }
 }
 
 function estExclue(i, p) {
   const cle = (p && (p.cle || nomBase(p.url))) || '';
-  return (EXCLUSIONS[i] || []).indexOf(cle) >= 0;
+  return (EXCLUSIONS[i] || []).some(r => r.cle === cle);
 }
 
 /* remplace la photo affichee sur la fiche i par la suivante disponible */
@@ -3286,18 +3304,30 @@ async function initExclusions() {
   appliquerExclusions();
 }
 
-/* signale une photo precise (identifiee par sa cle) pour le taxon i */
-function signalerPhoto(i, cle) {
+/* signale une photo precise pour le taxon i ; meta conserve un instantane
+   (url, credit, page) pour permettre l'affichage et la restauration plus tard */
+function signalerPhoto(i, cle, meta) {
   if (!cle) return;
-  EXCLUSIONS[i] = (EXCLUSIONS[i] || []).concat([cle]).filter((v, idx, a) => a.indexOf(v) === idx);
+  const arr = EXCLUSIONS[i] || (EXCLUSIONS[i] = []);
+  if (!arr.some(r => r.cle === cle)) {
+    arr.push({ cle, url: (meta && meta.url) || '', credit: (meta && meta.credit) || '', page: (meta && meta.page) || '' });
+  }
   sauverExclusionsLocales();
   if (cacheImgs[i]) cacheImgs[i] = cacheImgs[i].filter(p => (p.cle || nomBase(p.url)) !== cle);
   if (resolus[i] && (resolus[i].cle || nomBase(resolus[i].thumb)) === cle) promouvoirPhotoFiche(i);
 }
 
+/* retire un signalement ; la photo redevient disponible au prochain chargement de la page */
+function restaurerPhoto(i, cle) {
+  if (!EXCLUSIONS[i]) return;
+  EXCLUSIONS[i] = EXCLUSIONS[i].filter(r => r.cle !== cle);
+  if (!EXCLUSIONS[i].length) delete EXCLUSIONS[i];
+  sauverExclusionsLocales();
+}
+
 /* utilise par le quiz : signale, puis renvoie une photo de remplacement si disponible */
-function signalerEtRemplacer(i, cle) {
-  signalerPhoto(i, cle);
+function signalerEtRemplacer(i, cle, meta) {
+  signalerPhoto(i, cle, meta);
   const dispo = photosDe(i, true);
   return dispo.length ? dispo[0] : null;
 }
@@ -3306,7 +3336,7 @@ function signalerPhotoQuiz() {
   const q = QZ.q;
   if (!q || !q.photo) return;
   const cle = q.photo.cle || nomBase(q.photo.url);
-  const nouvelle = signalerEtRemplacer(q.i, cle);
+  const nouvelle = signalerEtRemplacer(q.i, cle, q.photo);
   const img = document.getElementById('qzImg');
   if (nouvelle && img) { q.photo = nouvelle; img.src = nouvelle.url; }
   const btn = document.getElementById('qzSignaler');
@@ -3320,7 +3350,7 @@ function signalerVignette(k) {
   const q = QZ.q, o = q && q.options && q.options[k];
   if (!o || !o.img) return;
   const cle = o.img.cle || nomBase(o.img.url);
-  const nouvelle = signalerEtRemplacer(o.i, cle);
+  const nouvelle = signalerEtRemplacer(o.i, cle, o.img);
   const vign = ecran.querySelector('.qz-vign[data-k="' + k + '"]');
   const img = vign ? vign.querySelector('img') : null;
   if (nouvelle && img) { o.img = nouvelle; img.src = nouvelle.url; }
@@ -3333,7 +3363,7 @@ function signalerVignette(k) {
 function compteExclusions() { return Object.keys(EXCLUSIONS).reduce((s, k) => s + EXCLUSIONS[k].length, 0); }
 
 function exporterExclusions() {
-  const data = { format: 'exclusions-vegetaux', version: 1, exporte: new Date().toISOString(), exclusions: EXCLUSIONS };
+  const data = { format: 'exclusions-vegetaux', version: 2, exporte: new Date().toISOString(), exclusions: EXCLUSIONS };
   const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -3349,15 +3379,45 @@ function importerExclusions(e) {
   fr.onload = () => {
     try {
       const d = JSON.parse(fr.result);
-      Object.keys((d || {}).exclusions || {}).forEach(k => {
-        EXCLUSIONS[k] = (EXCLUSIONS[k] || []).concat(d.exclusions[k]).filter((v, idx, a) => a.indexOf(v) === idx);
-      });
+      fusionnerExclusions(EXCLUSIONS, (d || {}).exclusions || {});
       sauverExclusionsLocales();
       appliquerExclusions();
       if (document.getElementById('qzExportExc')) ecranConfig();
     } catch (err) { alert('Fichier illisible.'); }
   };
   fr.readAsText(f);
+}
+
+/* ---------- liste des signalements, avec restauration individuelle ---------- */
+function listeExclusionsHTML() {
+  const indices = Object.keys(EXCLUSIONS).filter(k => EXCLUSIONS[k] && EXCLUSIONS[k].length)
+    .sort((a, b) => a - b);
+  if (!indices.length) {
+    return '<div style="font-size:14px;color:#555">Aucune photo signal\u00e9e pour l\u2019instant. ' +
+      'Un bouton \u26a0 appara\u00eet sur chaque photo, dans le quiz comme sur les fiches, pour en signaler une.</div>';
+  }
+  let html = '<div style="font-size:13px;color:#777;margin-bottom:10px">' +
+    'Une photo restaur\u00e9e redevient disponible au prochain chargement de la page.</div>';
+  indices.forEach(k => {
+    const t = TAXONS[k];
+    if (!t) return;
+    EXCLUSIONS[k].forEach(r => {
+      html += '<div class="exc-item">' +
+        (r.url ? '<img src="' + esc(r.url) + '" alt="">' : '<div class="exc-vide"></div>') +
+        '<div class="exc-info"><b>' + esc(t.nomCourt) + '</b>' +
+        '<span>' + (r.credit ? esc(r.credit.slice(0, 60)) : '<i>' + esc(t.latin) + '</i>') + '</span></div>' +
+        '<button type="button" class="exc-restaurer" data-i="' + k + '" data-cle="' + esc(r.cle) + '">Restaurer</button>' +
+        '</div>';
+    });
+  });
+  return html;
+}
+
+function brancherRestauration() {
+  ecran.querySelectorAll('.exc-restaurer').forEach(b => b.addEventListener('click', () => {
+    restaurerPhoto(b.dataset.i, b.dataset.cle);
+    ecranConfig();
+  }));
 }
 
 /* ================== Galerie / agrandissement ================== */
@@ -3403,7 +3463,7 @@ function signalerDepuisLightbox() {
   if (iCourant == null) return;
   const it = galerie[gIdx];
   const cle = it.cle || nomBase(it.url);
-  signalerPhoto(iCourant, cle);
+  signalerPhoto(iCourant, cle, it);
   cacheGalerie[iCourant] = (cacheGalerie[iCourant] || []).filter(p => (p.cle || nomBase(p.url)) !== cle);
   galerie = galerie.filter((_, k) => k !== gIdx);
   const sig = document.getElementById('lbSignaler');
@@ -3948,10 +4008,8 @@ function ecranConfig() {
     '<span id="catInfo" style="color:#666;font-size:14px"></span>' +
     '</div></div>' +
     '<div class="qz-panel"><h3>Signalements</h3>' +
-    '<div style="font-size:14px;color:#555;line-height:1.6">' +
-    (compteExclusions() ? compteExclusions() + ' photo(s) signal\u00e9e(s) comme incorrecte(s), retir\u00e9e(s) du quiz et des fiches sur cet appareil.' :
-      'Aucune photo signal\u00e9e pour l\u2019instant. Un bouton \u26a0 appara\u00eet sur chaque photo, dans le quiz comme sur les fiches, pour en signaler une.') +
-    '</div><div class="qz-row">' +
+    '<div id="excListe">' + listeExclusionsHTML() + '</div>' +
+    '<div class="qz-row">' +
     '<button class="qz-quit" id="qzExportExc">Exporter mes signalements (JSON)</button>' +
     '<button class="qz-quit" id="qzImportExc">Importer</button>' +
     '<input type="file" id="qzFileExc" accept="application/json" style="display:none">' +
@@ -3991,6 +4049,7 @@ function ecranConfig() {
   document.getElementById('qzExportExc').addEventListener('click', exporterExclusions);
   document.getElementById('qzImportExc').addEventListener('click', () => document.getElementById('qzFileExc').click());
   document.getElementById('qzFileExc').addEventListener('change', importerExclusions);
+  brancherRestauration();
 }
 
 function calculerPool() {

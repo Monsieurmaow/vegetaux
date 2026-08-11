@@ -2998,9 +2998,9 @@ function affiche(i, info) {
   img.onerror = () => { el.classList.add('vide'); el.innerHTML = '<div class="ph-state">Image indisponible</div>'; resolus[i] = null; };
   el.appendChild(img);
   const c = document.createElement('div');
-  c.className = 'ph-credit';
+  /*c.className = 'ph-credit';
   c.textContent = info.credit ? (info.credit.slice(0, 90)) : ('Wikimedia \u2013 ' + info.title);
-  el.appendChild(c);
+  el.appendChild(c);*/
   img.src = info.thumb;
 }
 

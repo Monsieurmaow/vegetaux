@@ -1,6 +1,6 @@
 /* Service worker - Reconnaissance des vegetaux
    Increments VERSION a chaque mise a jour du fichier index.html */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const APP   = 'vege-app-' + VERSION;
 const MEDIA = 'vege-media-v1';      /* photos : conserve entre les versions */
 const API   = 'vege-api-v1';
@@ -41,8 +41,10 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  /* 2. photos Wikimedia : cache d'abord, telechargement une seule fois */
-  if (url.hostname.endsWith('wikimedia.org') && url.pathname.indexOf('/api.php') < 0) {
+  /* 2. photos (Wikimedia et iNaturalist) : cache d'abord, telechargement une seule fois */
+  const estPhotoWiki = url.hostname.endsWith('wikimedia.org') && url.pathname.indexOf('/api.php') < 0;
+  const estPhotoINat = url.hostname.indexOf('inaturalist') >= 0 && url.hostname !== 'api.inaturalist.org';
+  if (estPhotoWiki || estPhotoINat) {
     e.respondWith(
       caches.match(req).then(c => c || fetch(req).then(r => garder(MEDIA, req, r)))
     );

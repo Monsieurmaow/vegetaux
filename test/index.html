@@ -3437,11 +3437,16 @@ function fichiersUtiles(titres) {
 async function chargerGalerie(i) {
   if (cacheGalerie[i]) return cacheGalerie[i];
   await chargerImages([i]);
-  const arr = photosDe(i, false).map(x => ({
+  const principale = resolus[i] ? {
+    url: resolus[i].grand || resolus[i].thumb, page: resolus[i].page || '',
+    credit: resolus[i].credit || '', cle: resolus[i].cle || nomBase(resolus[i].thumb)
+  } : null;
+  const reste = photosDe(i, false).map(x => ({
     url: x.grand || x.url, page: x.page, credit: x.credit || '', cle: x.cle || nomBase(x.url)
-  }));
-  cacheGalerie[i] = arr.length ? arr : [{ url: resolus[i].thumb, page: resolus[i].page,
-    credit: resolus[i].credit || '', cle: resolus[i].cle || nomBase(resolus[i].thumb) }];
+  })).filter(x => !principale || x.cle !== principale.cle);
+  const arr = principale ? [principale].concat(reste) : reste;
+  cacheGalerie[i] = arr.length ? arr : (resolus[i] ? [{ url: resolus[i].thumb, page: resolus[i].page,
+    credit: resolus[i].credit || '', cle: resolus[i].cle || nomBase(resolus[i].thumb) }] : []);
   return cacheGalerie[i];
 }
 
@@ -3485,7 +3490,8 @@ photoEls.forEach((el, i) => {
     const carte = el.closest('.card');
     lbTitle.innerHTML = carte.querySelector('.nom').innerText + ' <i>' + carte.querySelector('.latin').innerText + '</i>';
     document.body.classList.toggle('quiz-lb', document.body.classList.contains('quiz') && !carte.classList.contains('revele'));
-    galerie = [{url: resolus[i].thumb, page: resolus[i].page}];
+    galerie = [{ url: resolus[i].thumb, page: resolus[i].page,
+      credit: resolus[i].credit || '', cle: resolus[i].cle || nomBase(resolus[i].thumb) }];
     gIdx = 0; montrer(); lb.classList.add('on');
     const g = await chargerGalerie(i);
     if (g && g.length) { galerie = g; gIdx = 0; montrer(); }

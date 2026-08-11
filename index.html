@@ -56,8 +56,10 @@
     /* ================== QUIZ ================== */
     .quiz-btn { background:#8a4a1f; color:#fff; border:0; border-radius:8px; padding:0 18px; font-size:15px; font-weight:bold; cursor:pointer; }
     .quiz-btn:hover { background:#a55c2b; }
-    #quizApp { position:fixed; inset:0; background:#f4f7f2; z-index:200; display:none; overflow-y:auto; }
-    #quizApp.on { display:block; }
+    #quizApp, #parametresApp { position:fixed; inset:0; background:#f4f7f2; z-index:200; display:none; overflow-y:auto; }
+    #quizApp.on, #parametresApp.on { display:block; }
+    .param-btn { background:#3d5a45; color:#fff; border:0; border-radius:8px; padding:0 16px; font-size:15px; font-weight:bold; cursor:pointer; }
+    .param-btn:hover { background:#4f7059; }
     .qz-wrap { max-width:820px; margin:0 auto; padding:18px 18px 60px 18px; }
     .qz-top { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
     .qz-top h2 { color:#2d5a27; margin:0; font-size:22px; flex:1; }
@@ -146,7 +148,7 @@
     .ios-tip { max-width:900px; margin:0 auto 16px auto; background:#fff; border-left:5px solid #2d5a27; border-radius:9px; padding:12px 14px; font-size:14px; color:#444; display:none; align-items:flex-start; gap:10px; }
     .ios-tip button { margin-left:auto; background:none; border:0; font-size:20px; color:#888; cursor:pointer; line-height:1; }
     body { padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
-    #quizApp { padding-top:env(safe-area-inset-top); }
+    #quizApp, #parametresApp { padding-top:env(safe-area-inset-top); }
     #etatPhotos { max-width:900px; margin:0 auto 12px auto; background:#fff; border-left:5px solid #2d5a27;
       border-radius:8px; padding:9px 13px; font-size:13.5px; color:#555; display:none; }
     #etatPhotos b { color:#2d5a27; }
@@ -182,6 +184,7 @@
     </select>
     <button class="pwa-btn" id="installer">⬇ Installer l'appli</button>
     <button class="quiz-btn" id="lancerQuiz">▶ Lancer le quiz</button>
+    <button class="param-btn" id="lancerParametres">⚙ Paramètres</button>
     <label><input type="checkbox" id="quizMode"> Mode révision (masquer les noms)</label>
   </div>
   <div class="ios-tip" id="iosTip"><span><strong>Installer sur iPhone :</strong> touchez <strong>Partager</strong> en bas de Safari, puis <strong>Sur l'écran d'accueil</strong>. L'application s'ouvrira alors en plein écran et gardera les photos déjà vues.</span><button id="iosTipX" aria-label="Fermer">×</button></div>
@@ -2867,8 +2870,18 @@
   </div>
 
   <div class="note">
-    Les photos proviennent d'iNaturalist, où chaque image est rattachée à l'observation d'un organisme vivant identifiée par la communauté — ni schéma, ni formule chimique, ni produit dérivé — avec Wikipédia en repli lorsqu'aucune photo n'est trouvée. Toutes sont sous licence Creative Commons, le crédit du photographe s'affiche sous chaque image. Un clic sur une photo l'agrandit et permet de parcourir les autres images disponibles pour ce végétal. Un bouton ⚠ sur chaque photo, dans les fiches comme dans le quiz, permet de signaler une image incorrecte : elle est aussitôt remplacée et l'exclusion est mémorisée sur cet appareil ; le panneau « Signalements » du quiz permet de l'exporter, de la partager entre appareils, ou de revenir sur un signalement. Le bouton « Lancer le quiz » ouvre sept modes d'entraînement — QCM à distracteurs proches, saisie libre, mode terrain, duel, intrus, famille — dont les photos sont toujours différentes de celles des fiches. Un catalogue d'images figé (<code>images.json</code>), généré depuis l'écran du quiz, permet un chargement instantané et sans connexion ; en son absence, les photos sont recherchées en direct à l'ouverture de la page. Application installable : ajoutée à l'écran d'accueil, elle s'ouvre en plein écran et conserve hors ligne les photos déjà consultées. Les boutons « Ouvrir Wikipédia » utilisent le plus souvent le nom scientifique, généralement le titre de l'article botanique.
+    Les photos proviennent d'iNaturalist, où chaque image est rattachée à l'observation d'un organisme vivant identifiée par la communauté — ni schéma, ni formule chimique, ni produit dérivé — avec Wikipédia en repli lorsqu'aucune photo n'est trouvée. Toutes sont sous licence Creative Commons, le crédit du photographe s'affiche sous chaque image. Un clic sur une photo l'agrandit et permet de parcourir les autres images disponibles pour ce végétal. Un bouton ⚠ sur chaque photo, dans les fiches comme dans le quiz, permet de signaler une image incorrecte : elle est aussitôt remplacée et l'exclusion est mémorisée sur cet appareil ; la page « Paramètres », accessible depuis la barre du haut, permet de l'exporter, de la partager entre appareils, ou de revenir sur un signalement. Le bouton « Lancer le quiz » ouvre sept modes d'entraînement — QCM à distracteurs proches, saisie libre, mode terrain, duel, intrus, famille — dont les photos sont toujours différentes de celles des fiches. Un catalogue d'images figé (<code>images.json</code>), généré depuis la page « Paramètres », permet un chargement instantané et sans connexion ; en son absence, les photos sont recherchées en direct à l'ouverture de la page. Application installable : ajoutée à l'écran d'accueil, elle s'ouvre en plein écran et conserve hors ligne les photos déjà consultées. Les boutons « Ouvrir Wikipédia » utilisent le plus souvent le nom scientifique, généralement le titre de l'article botanique.
   </div>
+
+<div id="parametresApp">
+  <div class="qz-wrap">
+    <div class="qz-top">
+      <h2>Paramètres</h2>
+      <button class="qz-quit" id="paramQuit">Fermer</button>
+    </div>
+    <div id="paramEcran"></div>
+  </div>
+</div>
 
 <div id="quizApp">
   <div class="qz-wrap">
@@ -3382,7 +3395,7 @@ function importerExclusions(e) {
       fusionnerExclusions(EXCLUSIONS, (d || {}).exclusions || {});
       sauverExclusionsLocales();
       appliquerExclusions();
-      if (document.getElementById('qzExportExc')) ecranConfig();
+      if (document.getElementById('qzExportExc')) ecranParametres();
     } catch (err) { alert('Fichier illisible.'); }
   };
   fr.readAsText(f);
@@ -3414,9 +3427,9 @@ function listeExclusionsHTML() {
 }
 
 function brancherRestauration() {
-  ecran.querySelectorAll('.exc-restaurer').forEach(b => b.addEventListener('click', () => {
+  paramEcran.querySelectorAll('.exc-restaurer').forEach(b => b.addEventListener('click', () => {
     restaurerPhoto(b.dataset.i, b.dataset.cle);
-    ecranConfig();
+    ecranParametres();
   }));
 }
 
@@ -4006,23 +4019,6 @@ function ecranConfig() {
     '<button class="qz-quit" id="qzExport">Exporter ma progression (JSON)</button>' +
     '<button class="qz-quit" id="qzImport">Importer</button>' +
     '<input type="file" id="qzFile" accept="application/json" style="display:none">' +
-    '</div></div>' +
-    '<div class="qz-panel"><h3>Catalogue hors-ligne (avanc\u00e9)</h3>' +
-    '<div style="font-size:14px;color:#555;line-height:1.6">' +
-    'G\u00e9n\u00e8re un fichier <code>images.json</code> qui fige les photos trouv\u00e9es. ' +
-    'Une fois d\u00e9pos\u00e9 \u00e0 c\u00f4t\u00e9 de <code>index.html</code> sur votre h\u00e9bergement, ' +
-    'l\u2019appli le lit directement au d\u00e9marrage et n\u2019appelle plus aucune API\u00a0: ' +
-    'ouverture instantan\u00e9e, y compris hors connexion.' +
-    '</div><div class="qz-row">' +
-    '<button class="qz-go" id="catGenerer">G\u00e9n\u00e9rer le catalogue</button>' +
-    '<span id="catInfo" style="color:#666;font-size:14px"></span>' +
-    '</div></div>' +
-    '<div class="qz-panel"><h3>Signalements</h3>' +
-    '<div id="excListe">' + listeExclusionsHTML() + '</div>' +
-    '<div class="qz-row">' +
-    '<button class="qz-quit" id="qzExportExc">Exporter mes signalements (JSON)</button>' +
-    '<button class="qz-quit" id="qzImportExc">Importer</button>' +
-    '<input type="file" id="qzFileExc" accept="application/json" style="display:none">' +
     '</div></div>';
 
   const info = document.getElementById('qzInfo');
@@ -4054,12 +4050,6 @@ function ecranConfig() {
   document.getElementById('qzExport').addEventListener('click', exporter);
   document.getElementById('qzImport').addEventListener('click', () => document.getElementById('qzFile').click());
   document.getElementById('qzFile').addEventListener('change', importer);
-  const catBtn = document.getElementById('catGenerer');
-  if (catBtn) catBtn.addEventListener('click', genererCatalogue);
-  document.getElementById('qzExportExc').addEventListener('click', exporterExclusions);
-  document.getElementById('qzImportExc').addEventListener('click', () => document.getElementById('qzFileExc').click());
-  document.getElementById('qzFileExc').addEventListener('change', importerExclusions);
-  brancherRestauration();
 }
 
 function calculerPool() {
@@ -4365,6 +4355,47 @@ document.addEventListener('keydown', e => {
     if (el && !el.disabled) el.click();
   }
 });
+
+/* ================== PARAMETRES (catalogue hors-ligne + signalements) ================== */
+const paramApp = document.getElementById('parametresApp');
+const paramEcran = document.getElementById('paramEcran');
+
+function ouvrirParametres() {
+  paramApp.classList.add('on');
+  document.body.style.overflow = 'hidden';
+  ecranParametres();
+}
+function fermerParametres() {
+  paramApp.classList.remove('on');
+  document.body.style.overflow = '';
+}
+function ecranParametres() {
+  paramEcran.innerHTML =
+    '<div class="qz-panel"><h3>Catalogue hors-ligne (avanc\u00e9)</h3>' +
+    '<div style="font-size:14px;color:#555;line-height:1.6">' +
+    'G\u00e9n\u00e8re un fichier <code>images.json</code> qui fige les photos trouv\u00e9es. ' +
+    'Une fois d\u00e9pos\u00e9 \u00e0 c\u00f4t\u00e9 de <code>index.html</code> sur votre h\u00e9bergement, ' +
+    'l\u2019appli le lit directement au d\u00e9marrage et n\u2019appelle plus aucune API\u00a0: ' +
+    'ouverture instantan\u00e9e, y compris hors connexion.' +
+    '</div><div class="qz-row">' +
+    '<button class="qz-go" id="catGenerer">G\u00e9n\u00e9rer le catalogue</button>' +
+    '<span id="catInfo" style="color:#666;font-size:14px"></span>' +
+    '</div></div>' +
+    '<div class="qz-panel"><h3>Signalements</h3>' +
+    '<div id="excListe">' + listeExclusionsHTML() + '</div>' +
+    '<div class="qz-row">' +
+    '<button class="qz-quit" id="qzExportExc">Exporter mes signalements (JSON)</button>' +
+    '<button class="qz-quit" id="qzImportExc">Importer</button>' +
+    '<input type="file" id="qzFileExc" accept="application/json" style="display:none">' +
+    '</div></div>';
+  document.getElementById('catGenerer').addEventListener('click', genererCatalogue);
+  document.getElementById('qzExportExc').addEventListener('click', exporterExclusions);
+  document.getElementById('qzImportExc').addEventListener('click', () => document.getElementById('qzFileExc').click());
+  document.getElementById('qzFileExc').addEventListener('change', importerExclusions);
+  brancherRestauration();
+}
+document.getElementById('lancerParametres').addEventListener('click', ouvrirParametres);
+document.getElementById('paramQuit').addEventListener('click', fermerParametres);
 
 document.getElementById('lancerQuiz').addEventListener('click', ouvrirQuiz);
 document.getElementById('qzQuit').addEventListener('click', () => { if (QZ.enCours) ecranBilan(); else fermerQuiz(); });

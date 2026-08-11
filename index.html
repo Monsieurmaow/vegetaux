@@ -2867,7 +2867,7 @@
   </div>
 
   <div class="note">
-    Un catalogue d'images fig\u00e9 (<code>images.json</code>) peut \u00eatre g\u00e9n\u00e9r\u00e9 depuis l\u2019\u00e9cran du quiz pour un chargement instantan\u00e9 et enti\u00e8rement hors ligne\u00a0; en son absence, les photos proviennent d'iNaturalist, ou chaque image est rattachee a l'observation d'un organisme vivant identifie par la communaute : ni schema, ni formule chimique, ni produit derive. Wikipedia n'intervient qu'en repli. Les photos sont sous licence Creative Commons, le credit du photographe figure sous chaque image. Application installable : une fois ajoutee a l'ecran d'accueil, elle s'ouvre en plein ecran et conserve les photos deja consultees, qui restent visibles sans connexion. Le bouton "Lancer le quiz" ouvre sept modes d'entrainement (QCM a distracteurs proches, saisie libre, mode terrain, duel, intrus, famille). Les photos du quiz sont choisies hors de celles des fiches. Les photos sont recuperees automatiquement depuis Wikipedia / Wikimedia Commons : une connexion internet est necessaire a l'ouverture de la page. Cliquez sur une photo pour l'agrandir et faire defiler les autres images disponibles (port, feuille, fleur, fruit, ecorce). Les boutons ouvrent directement une page d'article Wikipedia France. Pour la plupart des vegetaux, le lien utilise le nom scientifique, qui est souvent le titre de l'article botanique.
+    Les photos proviennent d'iNaturalist, où chaque image est rattachée à l'observation d'un organisme vivant identifiée par la communauté — ni schéma, ni formule chimique, ni produit dérivé — avec Wikipédia en repli lorsqu'aucune photo n'est trouvée. Toutes sont sous licence Creative Commons, le crédit du photographe s'affiche sous chaque image. Un clic sur une photo l'agrandit et permet de parcourir les autres images disponibles pour ce végétal. Un bouton ⚠ sur chaque photo, dans les fiches comme dans le quiz, permet de signaler une image incorrecte : elle est aussitôt remplacée et l'exclusion est mémorisée sur cet appareil ; le panneau « Signalements » du quiz permet de l'exporter, de la partager entre appareils, ou de revenir sur un signalement. Le bouton « Lancer le quiz » ouvre sept modes d'entraînement — QCM à distracteurs proches, saisie libre, mode terrain, duel, intrus, famille — dont les photos sont toujours différentes de celles des fiches. Un catalogue d'images figé (<code>images.json</code>), généré depuis l'écran du quiz, permet un chargement instantané et sans connexion ; en son absence, les photos sont recherchées en direct à l'ouverture de la page. Application installable : ajoutée à l'écran d'accueil, elle s'ouvre en plein écran et conserve hors ligne les photos déjà consultées. Les boutons « Ouvrir Wikipédia » utilisent le plus souvent le nom scientifique, généralement le titre de l'article botanique.
   </div>
 
 <div id="quizApp">
@@ -3688,6 +3688,10 @@ async function chargerCatalogue() {
       if (t.photo.source === 'inat') viaInat++;
       if (t.photo.precision && t.photo.precision !== 'exact') approx++;
       compte++;
+    } else {
+      resolus[i] = null;
+      const el = photoEls[i];
+      if (el) { el.classList.add('vide'); el.innerHTML = '<div class="ph-state">Aucune photo disponible</div>'; }
     }
     cacheImgs[i] = (t.galerie || []).map(p => Object.assign({}, p, {
       organe: p.organe ? (ORGANES.find(o => o.cle === p.organe) || null) : null
